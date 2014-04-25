@@ -1,0 +1,8 @@
+---
+table: warp_session
+from: warp_1
+to: hxp_2
+depends:
+  - [warp_session, warp_1]
+sql: |
+    CREATE INDEX warp_session_touched_idx ON warp_session (touched);

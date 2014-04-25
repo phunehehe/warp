@@ -72,7 +72,9 @@ class SessionManager(object):
 
 @stormSchema.versioned
 class DBSession(Storm):
-    __version__ = "warp_1"
+    # FIXME HXP: This breaks integration with MySQL and SQLite, but those are
+    # not working anyway due to the missing touched column.
+    __version__ = "hxp_2"
     __storm_table__ = "warp_session"
 
     uid = RawStr(primary=True)
