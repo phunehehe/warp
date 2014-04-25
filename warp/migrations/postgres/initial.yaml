@@ -25,6 +25,20 @@ sql: |
   );
 
 ---
+table: warp_session_storage
+from: null
+to: hxp_1
+depends:
+  - [warp_session, warp_1]
+sql: |
+  CREATE TABLE warp_session_storage (
+    uid BYTEA NOT NULL REFERENCES warp_session(uid) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    value TEXT,
+    PRIMARY KEY (uid, key)
+  );
+
+---
 table: warp_avatar_role
 from: null
 to: warp_1

@@ -134,6 +134,16 @@ class DBSession(Storm):
         return "<Session '%s'>" % self.uid
 
 
+@stormSchema.versioned
+class DBSessionStorage(Storm):
+    __version__ = 'hxp_1'
+    __storm_table__ = 'warp_session_storage'
+    __storm_primary__ = 'uid', 'key'
+    uid = RawStr()
+    key = Unicode()
+    value = JSON()
+
+
 # ---------------------------
 
 
