@@ -97,17 +97,52 @@ class DBSession(Storm):
             self.touched = nowstamp()
             runtime.avatar_store.commit()
 
-    def addFlashMessage(self, msg, *args, **kwargs):
-        if self.uid not in _MESSAGES:
-            _MESSAGES[self.uid] = []
-        _MESSAGES[self.uid].append((msg, args, kwargs))
 
-    def getFlashMessages(self, clear=True):
-        if self.uid not in _MESSAGES:
+    def addFlashMessage(self, msg, in_memory=False, *args, **kwargs):
+
+        # TODO HXP: remove this after DB messages have been tested
+        if in_memory:
+            if self.uid not in _MESSAGES:
+                _MESSAGES[self.uid] = []
+            _MESSAGES[self.uid].append((msg, args, kwargs))
+            return
+
+        message_storage = runtime.avatar_store.find(DBSessionStorage, And(
+            DBSessionStorage.uid==self.uid,
+            DBSessionStorage.key==u'messages',
+        )).one()
+        if message_storage:
+            message_storage.value.append((msg, args, kwargs))
+        else:
+            message_storage = DBSessionStorage()
+            message_storage.uid = self.uid
+            message_storage.key = u'messages'
+            message_storage.value = [(msg, args, kwargs)]
+            runtime.avatar_store.add(message_storage)
+        runtime.avatar_store.commit()
+
+
+    def getFlashMessages(self, clear=True, in_memory=False):
+
+        # TODO HXP: remove this after DB messages have been tested
+        if in_memory:
+            if self.uid not in _MESSAGES:
+                return []
+            messages = _MESSAGES[self.uid][:]
+            if clear:
+                del _MESSAGES[self.uid]
+            return messages
+
+        message_storage = runtime.avatar_store.find(DBSessionStorage, And(
+            DBSessionStorage.uid==self.uid,
+            DBSessionStorage.key==u'messages',
+        )).one()
+        if not message_storage:
             return []
-        messages = _MESSAGES[self.uid][:]
+        messages = message_storage.value
         if clear:
-            del _MESSAGES[self.uid]
+            runtime.avatar_store.remove(message_storage)
+            runtime.avatar_store.commit()
         return messages
 
 
