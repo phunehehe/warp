@@ -4,7 +4,7 @@ from datetime import datetime
 from storm.locals import *
 from warp import runtime
 from warp.common import access
-from warp.common.store import createStore
+from warp.common.store import ManagedStore
 
 from warp.common.schema import stormSchema
 
@@ -108,21 +108,20 @@ class DBSession(Storm):
             _MESSAGES[self.uid].append((msg, args, kwargs))
             return
 
-        store = createStore()
-        message_storage = store.find(DBSessionStorage, And(
-            DBSessionStorage.uid==self.uid,
-            DBSessionStorage.key==u'messages',
-        )).one()
-        if message_storage:
-            message_storage.value.append((msg, args, kwargs))
-        else:
-            message_storage = DBSessionStorage()
-            message_storage.uid = self.uid
-            message_storage.key = u'messages'
-            message_storage.value = [(msg, args, kwargs)]
-            store.add(message_storage)
-        store.commit()
-        store.close()
+        with ManagedStore() as store:
+            message_storage = store.find(DBSessionStorage, And(
+                DBSessionStorage.uid==self.uid,
+                DBSessionStorage.key==u'messages',
+            )).one()
+            if message_storage:
+                message_storage.value.append((msg, args, kwargs))
+            else:
+                message_storage = DBSessionStorage()
+                message_storage.uid = self.uid
+                message_storage.key = u'messages'
+                message_storage.value = [(msg, args, kwargs)]
+                store.add(message_storage)
+            store.commit()
 
 
     def getFlashMessages(self, clear=True, in_memory=False):
@@ -136,19 +135,18 @@ class DBSession(Storm):
                 del _MESSAGES[self.uid]
             return messages
 
-        store = createStore()
-        message_storage = store.find(DBSessionStorage, And(
-            DBSessionStorage.uid==self.uid,
-            DBSessionStorage.key==u'messages',
-        )).one()
-        if not message_storage:
-            return []
-        messages = message_storage.value
-        if clear:
-            store.remove(message_storage)
-            store.commit()
-        store.close()
-        return messages
+        with ManagedStore() as store:
+            message_storage = store.find(DBSessionStorage, And(
+                DBSessionStorage.uid==self.uid,
+                DBSessionStorage.key==u'messages',
+            )).one()
+            if not message_storage:
+                return []
+            messages = message_storage.value
+            if clear:
+                store.remove(message_storage)
+                store.commit()
+            return messages
 
 
     def hasAvatar(self):
