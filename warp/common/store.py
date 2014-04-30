@@ -6,6 +6,12 @@ from storm.exceptions import DatabaseError
 
 from warp.runtime import avatar_store, config, sql
 
+
+def createStore():
+    # TODO HXP: maybe add connection pooling here?
+    return Store(create_database(config['db']))
+
+
 def setupStore():
     avatar_store.__init__(create_database(config['db']))
 

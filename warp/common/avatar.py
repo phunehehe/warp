@@ -4,6 +4,7 @@ from datetime import datetime
 from storm.locals import *
 from warp import runtime
 from warp.common import access
+from warp.common.store import createStore
 
 from warp.common.schema import stormSchema
 
@@ -107,7 +108,8 @@ class DBSession(Storm):
             _MESSAGES[self.uid].append((msg, args, kwargs))
             return
 
-        message_storage = runtime.avatar_store.find(DBSessionStorage, And(
+        store = createStore()
+        message_storage = store.find(DBSessionStorage, And(
             DBSessionStorage.uid==self.uid,
             DBSessionStorage.key==u'messages',
         )).one()
@@ -118,8 +120,9 @@ class DBSession(Storm):
             message_storage.uid = self.uid
             message_storage.key = u'messages'
             message_storage.value = [(msg, args, kwargs)]
-            runtime.avatar_store.add(message_storage)
-        runtime.avatar_store.commit()
+            store.add(message_storage)
+        store.commit()
+        store.close()
 
 
     def getFlashMessages(self, clear=True, in_memory=False):
@@ -133,7 +136,8 @@ class DBSession(Storm):
                 del _MESSAGES[self.uid]
             return messages
 
-        message_storage = runtime.avatar_store.find(DBSessionStorage, And(
+        store = createStore()
+        message_storage = store.find(DBSessionStorage, And(
             DBSessionStorage.uid==self.uid,
             DBSessionStorage.key==u'messages',
         )).one()
@@ -141,8 +145,9 @@ class DBSession(Storm):
             return []
         messages = message_storage.value
         if clear:
-            runtime.avatar_store.remove(message_storage)
-            runtime.avatar_store.commit()
+            store.remove(message_storage)
+            store.commit()
+        store.close()
         return messages
 
 
