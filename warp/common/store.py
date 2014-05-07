@@ -1,4 +1,5 @@
 from twisted.python import log
+from Queue import Queue, Empty
 
 from storm.locals import *
 from storm.uri import URI
@@ -7,13 +8,56 @@ from storm.exceptions import DatabaseError
 from warp.runtime import avatar_store, config, sql
 
 
-# TODO HXP: maybe add connection pooling here?
 class ManagedStore():
+
+    def __init__(self, store, pool):
+        self.store = store
+        self.pool = pool
+
     def __enter__(self):
-        self.store = Store(create_database(config['db']))
         return self.store
+
     def __exit__(self, type, value, traceback):
-        self.store.close()
+        self.pool.storeDone(self.store)
+
+
+class DBConnectionPool():
+
+    # TODO HXP: parameterize this
+    POOL_LIMIT = 10
+
+    connections = Queue()
+    in_pool = 0
+
+    # HXP: There are 3 ways to get a connection using Queue:
+    #  1. Use get_nowait(), which raises Empty if the pool is empty. This is
+    #     suitable for most cases. Client code should handle Empty, or
+    #     POOL_LIMIT should be raised.
+    #  2. Use get(), which blocks until there is something in the pool. This
+    #     may be more suitable if the store is going to be kept for a long
+    #     running task in separate threads.
+    #  3. Use get() with a timeout. This may be useful in some cases, though I
+    #     can't think of any right now.
+    # Also note that this is not thread-safe, so it should only be used in the
+    # main thread.
+    @classmethod
+    def getConnection(klass):
+        try:
+            store = klass.connections.get_nowait()
+        except Empty:
+            # XXX HXP: This doesn't look like the best place to populate the
+            # pool
+            if klass.in_pool < klass.POOL_LIMIT:
+                store = Store(create_database(config['db']))
+                klass.in_pool += 1
+            else:
+                raise
+        return ManagedStore(store, klass)
+
+    @classmethod
+    def storeDone(klass, store):
+        klass.connections.put(store)
+        # XXX HXP: maybe close each store after n uses?
 
 
 def setupStore():

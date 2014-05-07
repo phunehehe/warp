@@ -4,7 +4,7 @@ from datetime import datetime
 from storm.locals import *
 from warp import runtime
 from warp.common import access
-from warp.common.store import ManagedStore
+from warp.common.store import DBConnectionPool
 
 from warp.common.schema import stormSchema
 
@@ -108,7 +108,7 @@ class DBSession(Storm):
             _MESSAGES[self.uid].append((msg, args, kwargs))
             return
 
-        with ManagedStore() as store:
+        with DBConnectionPool.getConnection() as store:
             message_storage = store.get(DBSessionStorage, (self.uid, u'messages'))
             if message_storage:
                 message_storage.value.append((msg, args, kwargs))
@@ -132,7 +132,7 @@ class DBSession(Storm):
                 del _MESSAGES[self.uid]
             return messages
 
-        with ManagedStore() as store:
+        with DBConnectionPool.getConnection() as store:
             message_storage = store.find(DBSessionStorage, And(
                 DBSessionStorage.uid==self.uid,
                 DBSessionStorage.key==u'messages',
