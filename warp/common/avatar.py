@@ -109,10 +109,7 @@ class DBSession(Storm):
             return
 
         with ManagedStore() as store:
-            message_storage = store.find(DBSessionStorage, And(
-                DBSessionStorage.uid==self.uid,
-                DBSessionStorage.key==u'messages',
-            )).one()
+            message_storage = store.get(DBSessionStorage, (self.uid, u'messages'))
             if message_storage:
                 message_storage.value.append((msg, args, kwargs))
             else:
