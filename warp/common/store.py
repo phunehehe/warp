@@ -18,6 +18,8 @@ class ManagedStore():
         return self.store
 
     def __exit__(self, type, value, traceback):
+        # Whatever needs saving should have already been committed
+        self.store.rollback()
         self.pool.storeDone(self.store)
 
 
